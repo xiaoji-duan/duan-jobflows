@@ -341,6 +341,9 @@ public class MainVerticle extends AbstractVerticle {
 						String loopvalue = "##" + variable + "_value##";
 						JsonObject looptaskins = new JsonObject(looptask.encode().replaceAll(loopvalue, String.valueOf(loop)));
 
+						String loopstring = "##" + variable + "_string##";
+						looptaskins = new JsonObject(looptaskins.encode().replaceAll(loopstring, String.valueOf(variableValues.get(loop))));
+
 						trigger(null, instanceId, root, current, jobflow, task, triggerId, looptaskins);
 					}
 				} else {
