@@ -139,7 +139,7 @@ public class MainVerticle extends AbstractVerticle {
 		String instanceId = UUID.randomUUID().toString();
 		System.out.println("jobflow [" + jobflow.getString("name") + "] instance id " + instanceId);
 		System.out.println(jobflow.encodePrettily());
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] parameters [" + received.body().size() + "]");
+		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] parameters [" + getShortContent(received.body().encode()) + "]");
 		if (!(received.body().getValue("body") instanceof JsonObject)) {
 			System.out.println("Message content is not JsonObject, process stopped.");
 			return;
@@ -238,6 +238,10 @@ public class MainVerticle extends AbstractVerticle {
 			trigger(null, instanceId, root, root.copy(), jobflow, jobflow.copy(), instanceId, followtask);
 		}
 	}
+
+	public static String getShortContent(String origin) {
+		return origin.length() > 512 ? origin.substring(0, 512) : origin;
+	}
 	
 	/**
 	 * 
@@ -304,7 +308,7 @@ public class MainVerticle extends AbstractVerticle {
 						MessageProducer<JsonObject> producer = bridge.createProducer(endpointtrigger);
 
 						JsonObject body = new JsonObject().put("context", new JsonObject().put(endpoint, current.getJsonObject("parent", current).getJsonObject("outputs", current)));
-						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + (body.encode().length() > 512 ? body.encode().substring(0, 512) : body.encode()));
+						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + getShortContent(body.encode()));
 
 						producer.send(new JsonObject().put("body", body));
 					}
@@ -515,7 +519,7 @@ public class MainVerticle extends AbstractVerticle {
 	private void next(Future<JsonObject> futureIn, String instanceId, String triggerId, JsonObject root, JsonObject parent, JsonObject jobflow, JsonObject parenttask, String parentTriggerId, JsonObject task, Message<JsonObject> received) {
 		Long currenttime = System.currentTimeMillis();
 		String trigger = task.getString("trigger");
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + received.body().size() + "]");
+		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + getShortContent(received.body().encode()) + "]");
 		JsonObject data = received.body().getJsonObject("body");
 
 		JsonObject current = new JsonObject();
@@ -588,7 +592,7 @@ public class MainVerticle extends AbstractVerticle {
 		persistent.put("parent", current.getJsonObject("parent") == null ? current : current.getJsonObject("parent"));
 		
 		if ("mpp".equals(trigger))
-		System.out.println(persistent.encode());
+		System.out.println(getShortContent(persistent.encode()));
 
 		Configuration document = Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build();
 
