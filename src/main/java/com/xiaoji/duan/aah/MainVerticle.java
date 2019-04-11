@@ -520,6 +520,7 @@ public class MainVerticle extends AbstractVerticle {
 	}
 	
 	private void next(Future<JsonObject> futureIn, String instanceId, String triggerId, JsonObject root, JsonObject parent, JsonObject jobflow, JsonObject parenttask, String parentTriggerId, JsonObject task, Message<JsonObject> received) {
+		try {
 		Long currenttime = System.currentTimeMillis();
 		String trigger = task.getString("trigger");
 		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + getShortContent(received.body().encode()) + "]");
@@ -551,12 +552,17 @@ public class MainVerticle extends AbstractVerticle {
 		JsonObject allcompletenexts = completenexts.getJsonObject("next", new JsonObject())
 				.getJsonObject("all", new JsonObject());
 
-		if (nexts != null) {
+		if (nexts != null && !nexts.isEmpty()) {
 			if (!allcompletenexts.isEmpty()) {
 				allcompletenexts(allcompletenexts, instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
 			} else {
 				nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
 			}
+		} else {
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end with no next triggers.");
+		}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
