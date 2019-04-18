@@ -1,6 +1,8 @@
 package com.xiaoji.duan.aah;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -134,8 +136,13 @@ public class MainVerticle extends AbstractVerticle {
 		consumer.handler(vertxMsg -> this.process(trigger, jobflow, vertxMsg));
 	}
 	
+	private static String currentDateTime() {
+		SimpleDateFormat myFmt = new SimpleDateFormat("yyyy年MM月dd日 HH时mm分ss秒");
+		return myFmt.format(new Date());
+	}
+	
 	private void process(String trigger, JsonObject jobflow, Message<JsonObject> received) {
-		System.out.println("jobflow [" + jobflow.getString("name") + "] triggered by " + trigger);
+		System.out.println("jobflow [" + jobflow.getString("name") + "] triggered by " + trigger + "@" + currentDateTime());
 		String instanceId = UUID.randomUUID().toString();
 		System.out.println("jobflow [" + jobflow.getString("name") + "] instance id " + instanceId);
 		System.out.println(jobflow.encodePrettily());
@@ -559,7 +566,7 @@ public class MainVerticle extends AbstractVerticle {
 				nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
 			}
 		} else {
-			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end with no next triggers.");
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end@" + currentDateTime() + " with no next triggers.");
 		}
 		} catch (Exception e) {
 			e.printStackTrace();
