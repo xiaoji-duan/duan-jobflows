@@ -606,7 +606,9 @@ public class MainVerticle extends AbstractVerticle {
 		JsonObject persistent = new JsonObject();
 		persistent.put("root", root);
 		persistent.put("parent", current.getJsonObject("parent") == null ? current : current.getJsonObject("parent"));
-		
+//		System.out.println("============================ Debug ============================");
+//		System.out.println(persistent.encode());
+//		System.out.println("============================ Debug ============================");
 		if ("mpp".equals(trigger))
 		System.out.println(getShortContent(persistent.encode()));
 
