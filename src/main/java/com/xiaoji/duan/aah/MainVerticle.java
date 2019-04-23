@@ -627,6 +627,14 @@ public class MainVerticle extends AbstractVerticle {
 				val = params[1];
 			}
 			
+			if (val == null && params.length > 2) {
+				if (params[2].contains("$")) {
+					val = JsonPath.using(document).parse(persistent.encode()).read(params[2]);
+				} else {
+					val = params[2];
+				}
+			}
+			
 			nextctx.put(params[0], val);
 			pParameters.put(params[0], val);
 		}
