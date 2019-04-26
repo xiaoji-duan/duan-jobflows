@@ -656,38 +656,40 @@ public class MainVerticle extends AbstractVerticle {
 	}
 	
 	private void persistentStatus(String trigger, String name, String instanceId, JsonObject parenttask, String parentId, String followtrigger, String followname, String followinstanceId, JsonObject status) {
-		MessageProducer<JsonObject> producer = bridge.createProducer("aak");
-
-		JsonObject body = new JsonObject()
-				.put("saprefix", "aah")
-				.put("collection", trigger)
-				.put("name", name)
-				.put("id", instanceId)
-				.put("timestamp", status.getLong("timestamp"))
-				.put("context", status);
-
-		if (status.containsKey("costs")) {
-			body.put("costs", status.getLong("costs"));
-		}
-		
-		if (followtrigger != null || followname != null || followinstanceId != null) {
-			body.put("parent", parenttask);
-			body.put("parentId", parentId);
-		}
-		
-		if (followtrigger != null) {
-			body.put("trigger", followtrigger);
-		}
-		
-		if (followname != null) {
-			body.put("triggerName", followname);
-		}
-		
-		if (followinstanceId != null) {
-			body.put("triggerId", followinstanceId);
-		}
-
-		producer.send(new JsonObject().put("body", body));
+		vertx.executeBlocking(block -> {
+			MessageProducer<JsonObject> producer = bridge.createProducer("aak");
+	
+			JsonObject body = new JsonObject()
+					.put("saprefix", "aah")
+					.put("collection", trigger)
+					.put("name", name)
+					.put("id", instanceId)
+					.put("timestamp", status.getLong("timestamp"))
+					.put("context", status);
+	
+			if (status.containsKey("costs")) {
+				body.put("costs", status.getLong("costs"));
+			}
+			
+			if (followtrigger != null || followname != null || followinstanceId != null) {
+				body.put("parent", parenttask);
+				body.put("parentId", parentId);
+			}
+			
+			if (followtrigger != null) {
+				body.put("trigger", followtrigger);
+			}
+			
+			if (followname != null) {
+				body.put("triggerName", followname);
+			}
+			
+			if (followinstanceId != null) {
+				body.put("triggerId", followinstanceId);
+			}
+	
+			producer.send(new JsonObject().put("body", body));
+		}, handler -> {});
 	}
 	
 	private boolean when(JsonObject def, JsonObject persistent) {
