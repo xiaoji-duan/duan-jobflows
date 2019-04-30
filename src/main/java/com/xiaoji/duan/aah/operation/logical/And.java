@@ -19,6 +19,10 @@ public class And extends LogicalOperation {
 			
 			When when = new When(anddef, this.data);
 			result = Boolean.logicalAnd(result, when.evalate());
+			
+			if (result == false) {
+				break;
+			}
 		}
 		
 		return result;

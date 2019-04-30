@@ -53,7 +53,10 @@ public class When {
 
 				Object out = JsonPath.using(document).parse(json).read(realname);
 
-				if (out instanceof net.minidev.json.JSONArray) {
+				if (out == null) {
+					When when = new When(this.def.getJsonObject(name), new JsonObject());
+					result = Boolean.logicalAnd(result, when.evalate());
+				} else if (out instanceof net.minidev.json.JSONArray) {
 					JsonArray val = new JsonArray(((net.minidev.json.JSONArray) out).toJSONString());
 
 					When when = new When(this.def.getJsonObject(name), val);
@@ -61,8 +64,13 @@ public class When {
 				} else {
 					Map<String, Object> val = (Map<String, Object>) out;
 
-					When when = new When(this.def.getJsonObject(name), new JsonObject(val));
-					result = Boolean.logicalAnd(result, when.evalate());
+					if (val.isEmpty()) {
+						When when = new When(this.def.getJsonObject(name), new JsonObject());
+						result = Boolean.logicalAnd(result, when.evalate());
+					} else {
+						When when = new When(this.def.getJsonObject(name), new JsonObject(val));
+						result = Boolean.logicalAnd(result, when.evalate());
+					}
 				}
 			} else if (name.equals("d$length") && data instanceof JsonArray) {
 				Integer length = ((JsonArray) this.data).size();

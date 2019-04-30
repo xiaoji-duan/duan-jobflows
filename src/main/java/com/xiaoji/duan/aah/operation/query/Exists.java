@@ -21,7 +21,11 @@ public class Exists extends QueryOperation {
 
 	@Override
 	protected boolean eval() {
-		return !Boolean.logicalXor(this.data.containsKey(fieldname), this.cond); 
+		if (this.data == null) {
+			return !Boolean.logicalXor(false, this.cond);
+		} else {
+			return !Boolean.logicalXor(this.data.containsKey(fieldname), this.cond);
+		} 
 	}
 
 	@Override

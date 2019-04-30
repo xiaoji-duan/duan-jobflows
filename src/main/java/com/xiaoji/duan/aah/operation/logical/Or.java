@@ -19,6 +19,10 @@ public class Or extends LogicalOperation {
 			
 			When when = new When(anddef, this.data);
 			result = Boolean.logicalOr(result, when.evalate());
+			
+			if (result == true) {
+				break;
+			}
 		}
 		
 		return result;
