@@ -2,22 +2,26 @@ package com.xiaoji.duan.aah.operation.comparision;
 
 public class Lte extends ComparisionOperation {
 
+	private Object left;
+	private Object right;
+	
 	@Override
 	public void setLeft(Object left) {
-		// TODO Auto-generated method stub
-		
+		this.left = left;
 	}
 
 	@Override
 	public void setRight(Object right) {
-		// TODO Auto-generated method stub
-		
+		this.right = right;
 	}
 
 	@Override
 	protected boolean eval() {
-		// TODO Auto-generated method stub
-		return false;
+		if (left != null && right != null) {
+			return ((Number) left).doubleValue() <= ((Number) right).doubleValue();
+		} else {
+			return false;
+		}
 	}
 
 }

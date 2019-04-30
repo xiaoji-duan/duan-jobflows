@@ -27,8 +27,11 @@ public class Field {
 				String realname = name.substring(1);
 				
 				ComparisionOperation op = ComparisionOperationFactory.createByName(realname);
-				
-				op.setLeft(((JsonObject) this.data).getValue(this.name));
+				if (this.data instanceof JsonObject) {
+					op.setLeft(((JsonObject) this.data).getValue(this.name));
+				} else {
+					op.setLeft(this.data);
+				}
 				op.setRight(this.def.getValue(name));
 				
 				result = Boolean.logicalAnd(result, op.evalate());

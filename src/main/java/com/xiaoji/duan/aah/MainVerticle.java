@@ -182,6 +182,32 @@ public class MainVerticle extends AbstractVerticle {
 			
 			String type = followtask.getString("type", "single");
 			
+			JsonObject when = followtask.getJsonObject("when", new JsonObject());
+			
+			if (!when.isEmpty()) {
+				JsonObject whendata = new JsonObject();
+				whendata.put("root", root);
+				whendata.put("parent", root);
+
+				When wheneval = new When(when, whendata);
+				boolean whengo = true;
+				
+				try {
+					whengo = wheneval.evalate();
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				} catch (InstantiationException e) {
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				}
+				
+				if (!whengo) {
+					System.out.println("Skipped for when condition " + when.encode());
+					continue;
+				}
+			}
+
 			if ("loop".equals(type)) {
 				System.out.println("follows can not process loop task, skipped.");
 				continue;

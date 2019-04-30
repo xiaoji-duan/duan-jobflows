@@ -51,11 +51,25 @@ public class When {
 					json = this.data.toString();
 				}
 
-				Map<String, Object> val = JsonPath.using(document).parse(json).read(realname);
+				Object out = JsonPath.using(document).parse(json).read(realname);
 
-				When when = new When(this.def.getJsonObject(name), new JsonObject(val));
+				if (out instanceof net.minidev.json.JSONArray) {
+					JsonArray val = new JsonArray(((net.minidev.json.JSONArray) out).toJSONString());
 
-				result = Boolean.logicalAnd(result, when.evalate());
+					When when = new When(this.def.getJsonObject(name), val);
+					result = Boolean.logicalAnd(result, when.evalate());
+				} else {
+					Map<String, Object> val = (Map<String, Object>) out;
+
+					When when = new When(this.def.getJsonObject(name), new JsonObject(val));
+					result = Boolean.logicalAnd(result, when.evalate());
+				}
+			} else if (name.equals("d$length") && data instanceof JsonArray) {
+				Integer length = ((JsonArray) this.data).size();
+				System.out.println(length);
+				Field field = new Field("length", this.def.getJsonObject(name), length);
+
+				result = Boolean.logicalAnd(result, field.evalate());
 			} else {
 				System.out.println(((JsonObject) this.data).encode());
 				Field field = new Field(name, this.def.getJsonObject(name), this.data);
@@ -70,6 +84,8 @@ public class When {
 	public static void main(String[] args) {
 		JsonObject def = new JsonObject()
 				.put("d$and", new JsonArray()
+						.add(new JsonObject().put("d$.array", new JsonObject().put("d$length", new JsonObject().put("d$gt", 1))))
+						.add(new JsonObject().put("d$.emptyarray", new JsonObject().put("d$length", new JsonObject().put("d$lt", 1))))
 						.add(new JsonObject()
 								.put("d$.parent.outputs", new JsonObject().put("d$or", new JsonArray()
 										.add(new JsonObject()
@@ -83,7 +99,17 @@ public class When {
 								.put("d$.parent.outputs", new JsonObject()
 										.put("when", new JsonObject()
 												.put("d$ne", false)))));
-		JsonObject data = new JsonObject().put("name", "testflow").put("parent", new JsonObject().put("outputs", new JsonObject().put("when", true).put("who", "who").put("what", "what")));
+		JsonObject data = new JsonObject()
+				.put("array", new JsonArray()
+						.add(new JsonObject()
+								.put("test", true)))
+				.put("emptyarray", new JsonArray())
+				.put("name", "testflow")
+				.put("parent", new JsonObject()
+						.put("outputs", new JsonObject()
+								.put("when", true)
+								.put("who", "who")
+								.put("what", "what")));
 		
 		When test = new When(def, data);
 		
