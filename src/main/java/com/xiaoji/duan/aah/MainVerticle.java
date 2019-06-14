@@ -180,6 +180,7 @@ public class MainVerticle extends AbstractVerticle {
 		for (int i = 0; i < follows.size(); i++) {
 			JsonObject followtask = follows.getJsonObject(i);
 			
+			String taskname = followtask.getString("name", "");
 			String type = followtask.getString("type", "single");
 			
 			JsonObject when = followtask.getJsonObject("when", new JsonObject());
@@ -203,8 +204,10 @@ public class MainVerticle extends AbstractVerticle {
 				}
 				
 				if (!whengo) {
-					System.out.println("Skipped for when condition " + when.encode());
+					System.out.println(taskname + " skipped for when condition.");
 					continue;
+				} else {
+					System.out.println(taskname + " continued for when condition.");
 				}
 			}
 
@@ -298,6 +301,7 @@ public class MainVerticle extends AbstractVerticle {
 		for (int i = 0; i < nexts.size(); i++) {
 			JsonObject nexttask = nexts.getJsonObject(i);
 			
+			String taskname = nexttask.getString("name", "");
 			String tasktype = nexttask.getString("type", "single");
 			
 			JsonObject when = nexttask.getJsonObject("when", new JsonObject());
@@ -321,8 +325,10 @@ public class MainVerticle extends AbstractVerticle {
 				}
 				
 				if (!whengo) {
-					System.out.println("Skipped for when condition " + when.encode());
+					System.out.println(taskname + " skipped for when condition.");
 					continue;
+				} else {
+					System.out.println(taskname + " continued for when condition.");
 				}
 			}
 
@@ -440,6 +446,7 @@ public class MainVerticle extends AbstractVerticle {
 		for (int i = 0; i < nexts.size(); i++) {
 			JsonObject nexttask = nexts.getJsonObject(i);
 			
+			String taskname = nexttask.getString("name", "");
 			String tasktype = nexttask.getString("type", "single");
 
 			JsonObject when = nexttask.getJsonObject("when", new JsonObject());
@@ -463,8 +470,10 @@ public class MainVerticle extends AbstractVerticle {
 				}
 				
 				if (!whengo) {
-					System.out.println("Skipped for when condition " + when.encode());
+					System.out.println(taskname + " skipped for when condition.");
 					continue;
+				} else {
+					System.out.println(taskname + " continued for when condition.");
 				}
 			}
 
