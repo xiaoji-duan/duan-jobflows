@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -657,7 +658,30 @@ public class MainVerticle extends AbstractVerticle {
 			Object val = "";
 
 			if (params.length > 1 && params[1].contains("$")) {
-				val = JsonPath.using(document).parse(persistent.encode()).read(params[1]);
+				//增加多个参数合并   $.parent.parameters | $.root.parameters
+				if (params[1].contains("|")) {
+					String[] merges = params[1].split("|");
+					
+					Object mergeto = "";
+					JsonObject merged = new JsonObject();
+
+					int mergeindex = 0;
+					for (String mergeval : merges) {
+						mergeto = JsonPath.using(document).parse(persistent.encode()).read(params[1]);
+						
+						if (mergeto instanceof Map) {
+							merged.mergeIn(new JsonObject((Map) mergeto));
+						} else {
+							merged.mergeIn(new JsonObject().put(params[0] + "_" + mergeindex, mergeto));
+						}
+						
+						mergeindex++;
+					}
+					
+					val = merged;
+				} else {
+					val = JsonPath.using(document).parse(persistent.encode()).read(params[1]);
+				}
 			} else if (params.length > 1) {
 				val = params[1];
 			}
