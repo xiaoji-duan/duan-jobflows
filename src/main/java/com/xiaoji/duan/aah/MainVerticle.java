@@ -660,14 +660,14 @@ public class MainVerticle extends AbstractVerticle {
 			if (params.length > 1 && params[1].contains("$")) {
 				//增加多个参数合并   $.parent.parameters | $.root.parameters
 				if (params[1].contains("|")) {
-					String[] merges = params[1].split("|");
+					String[] merges = params[1].split("\\|");
 					
 					Object mergeto = "";
 					JsonObject merged = new JsonObject();
 
 					int mergeindex = 0;
 					for (String mergeval : merges) {
-						mergeto = JsonPath.using(document).parse(persistent.encode()).read(params[1]);
+						mergeto = JsonPath.using(document).parse(persistent.encode()).read(mergeval);
 						
 						if (mergeto instanceof Map) {
 							merged.mergeIn(new JsonObject((Map) mergeto));
