@@ -239,6 +239,10 @@ public class MainVerticle extends AbstractVerticle {
 						consumer.handler(vertxMsg -> {
 							JsonObject endin = vertxMsg.body().getJsonObject("body", new JsonObject()).getJsonObject("context", new JsonObject());
 							endpointFuture.complete(endin);
+							
+							vertx.setTimer(3000, timer -> {
+								consumer.unregister();
+							});
 						});
 					}
 					
@@ -562,50 +566,54 @@ public class MainVerticle extends AbstractVerticle {
 	
 	}
 	
-	private void next(Future<JsonObject> futureIn, String instanceId, String triggerId, JsonObject root, JsonObject parent, JsonObject jobflow, JsonObject parenttask, String parentTriggerId, JsonObject task, Message<JsonObject> received) {
+	private void next(Future<JsonObject> futureIn, String instanceId, String triggerId, JsonObject root, JsonObject parent, JsonObject jobflow, JsonObject parenttask, String parentTriggerId, JsonObject task, Message<JsonObject> received, MessageConsumer<JsonObject> _self) {
 		try {
-		Long currenttime = System.currentTimeMillis();
-		String trigger = task.getString("trigger");
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + getShortContent(received.body().encode()) + "]");
-		JsonObject data = received.body().getJsonObject("body");
-
-		JsonObject current = new JsonObject();
-		
-		if (data != null) {
-			parent = parent.put("outputs", data.getJsonObject("context"));
-		}
-		current.put("parent", parent);
-
-		String rootname = jobflow.getString("name");
-		String roottrigger = jobflow.getString("trigger");
-		String name = task.getString("name");
-		current.put("timestamp", currenttime);
-		current.put("costs", currenttime - parent.getLong("timestamp", currenttime));
-
-		persistentStatus(roottrigger, rootname, instanceId, parenttask, parentTriggerId, trigger, name, triggerId, current);
-
-		// 完成状态返回
-		if (futureIn != null)
-			futureIn.complete(data.getJsonObject("context"));
-		
-		JsonArray nexts = task.getJsonArray("next");
-		
-		// 下一步处理全部完成后处理
-		JsonObject completenexts = task.getJsonObject("complete", new JsonObject());
-		JsonObject allcompletenexts = completenexts.getJsonObject("next", new JsonObject())
-				.getJsonObject("all", new JsonObject());
-
-		if (nexts != null && !nexts.isEmpty()) {
-			if (!allcompletenexts.isEmpty()) {
-				allcompletenexts(allcompletenexts, instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
-			} else {
-				nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
+			Long currenttime = System.currentTimeMillis();
+			String trigger = task.getString("trigger");
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + getShortContent(received.body().encode()) + "]");
+			JsonObject data = received.body().getJsonObject("body");
+	
+			JsonObject current = new JsonObject();
+			
+			if (data != null) {
+				parent = parent.put("outputs", data.getJsonObject("context"));
 			}
-		} else {
-			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end@" + currentDateTime() + " with no next triggers.");
-		}
+			current.put("parent", parent);
+	
+			String rootname = jobflow.getString("name");
+			String roottrigger = jobflow.getString("trigger");
+			String name = task.getString("name");
+			current.put("timestamp", currenttime);
+			current.put("costs", currenttime - parent.getLong("timestamp", currenttime));
+	
+			persistentStatus(roottrigger, rootname, instanceId, parenttask, parentTriggerId, trigger, name, triggerId, current);
+	
+			// 完成状态返回
+			if (futureIn != null)
+				futureIn.complete(data.getJsonObject("context"));
+			
+			JsonArray nexts = task.getJsonArray("next");
+			
+			// 下一步处理全部完成后处理
+			JsonObject completenexts = task.getJsonObject("complete", new JsonObject());
+			JsonObject allcompletenexts = completenexts.getJsonObject("next", new JsonObject())
+					.getJsonObject("all", new JsonObject());
+	
+			if (nexts != null && !nexts.isEmpty()) {
+				if (!allcompletenexts.isEmpty()) {
+					allcompletenexts(allcompletenexts, instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
+				} else {
+					nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
+				}
+			} else {
+				System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end@" + currentDateTime() + " with no next triggers.");
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			vertx.setTimer(3000, timer -> {
+				_self.unregister();
+			});
 		}
 	}
 	
@@ -702,7 +710,7 @@ public class MainVerticle extends AbstractVerticle {
 		// 订阅下一步处理返回
 		MessageConsumer<JsonObject> consumer = bridge.createConsumer(taskresulttrigger);
 		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] subscribed.");
-		consumer.handler(vertxMsg -> this.next(future, instanceId, triggerId, root, current, jobflow, parenttask, parentTriggerId, task, vertxMsg));
+		consumer.handler(vertxMsg -> this.next(future, instanceId, triggerId, root, current, jobflow, parenttask, parentTriggerId, task, vertxMsg, consumer));
 
 		// 发送下一步处理消息
 		MessageProducer<JsonObject> producer = bridge.createProducer(trigger);
