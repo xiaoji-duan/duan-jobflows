@@ -241,7 +241,13 @@ public class MainVerticle extends AbstractVerticle {
 							endpointFuture.complete(endin);
 							
 							vertx.setTimer(3000, timer -> {
-								consumer.unregister();
+								consumer.unregister(ar -> {
+									if (ar.succeeded()) {
+										System.out.println("Consumer " + consumer.address() + " unregister succeeded.");
+									} else {
+										ar.cause().printStackTrace();
+									}
+								});
 							});
 						});
 					}
@@ -612,7 +618,13 @@ public class MainVerticle extends AbstractVerticle {
 			e.printStackTrace();
 		} finally {
 			vertx.setTimer(3000, timer -> {
-				_self.unregister();
+				_self.unregister(ar -> {
+					if (ar.succeeded()) {
+						System.out.println("Consumer " + _self.address() + " unregister succeeded.");
+					} else {
+						ar.cause().printStackTrace();
+					}
+				});
 			});
 		}
 	}
