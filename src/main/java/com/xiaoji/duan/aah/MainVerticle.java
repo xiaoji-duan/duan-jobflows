@@ -361,6 +361,7 @@ public class MainVerticle extends AbstractVerticle {
 						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + getShortContent(body.encode()));
 
 						producer.send(new JsonObject().put("body", body));
+						producer.end();
 					}
 				} else {
 					System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint no defined forward withs.");
@@ -731,7 +732,7 @@ public class MainVerticle extends AbstractVerticle {
 		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] send " + (body.encode().length() > 512 ? body.encode().substring(0, 512) : body.encode()));
 
 		producer.send(new JsonObject().put("body", body));
-		
+		producer.end();
 	}
 	
 	private void persistentStatus(String trigger, String name, String instanceId, JsonObject parenttask, String parentId, String followtrigger, String followname, String followinstanceId, JsonObject status) {
@@ -768,6 +769,7 @@ public class MainVerticle extends AbstractVerticle {
 			}
 	
 			producer.send(new JsonObject().put("body", body));
+			producer.end();
 		}, handler -> {});
 	}
 	
