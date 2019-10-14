@@ -574,6 +574,13 @@ public class MainVerticle extends AbstractVerticle {
 	}
 	
 	private void next(Future<JsonObject> futureIn, String instanceId, String triggerId, JsonObject root, JsonObject parent, JsonObject jobflow, JsonObject parenttask, String parentTriggerId, JsonObject task, Message<JsonObject> received, MessageConsumer<JsonObject> _self) {
+		//////////////////////////////////////////////////////////
+		// 2019/10/14 席理加增加
+		// 支持子任务多次返回
+		//////////////////////////////////////////////////////////
+		Boolean hasMore = Boolean.FALSE;
+		//////////////////////////////////////////////////////////
+
 		try {
 			Long currenttime = System.currentTimeMillis();
 			String trigger = task.getString("trigger");
@@ -584,6 +591,12 @@ public class MainVerticle extends AbstractVerticle {
 			
 			if (data != null) {
 				parent = parent.put("outputs", data.getJsonObject("context"));
+				//////////////////////////////////////////////////////////
+				// 2019/10/14 席理加增加
+				// 支持子任务多次返回
+				//////////////////////////////////////////////////////////
+				hasMore = data.getBoolean("more", Boolean.FALSE);
+				//////////////////////////////////////////////////////////
 			}
 			current.put("parent", parent);
 	
@@ -618,15 +631,17 @@ public class MainVerticle extends AbstractVerticle {
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			vertx.setTimer(3000, timer -> {
-				_self.unregister(ar -> {
-					if (ar.succeeded()) {
-						System.out.println("Consumer " + _self.address() + " unregister succeeded.");
-					} else {
-						ar.cause().printStackTrace();
-					}
+			if (!hasMore) {
+				vertx.setTimer(3000, timer -> {
+					_self.unregister(ar -> {
+						if (ar.succeeded()) {
+							System.out.println("Consumer " + _self.address() + " unregister succeeded.");
+						} else {
+							ar.cause().printStackTrace();
+						}
+					});
 				});
-			});
+			}
 		}
 	}
 	
