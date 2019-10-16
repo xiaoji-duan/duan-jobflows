@@ -34,6 +34,7 @@ public class MainVerticle extends AbstractVerticle {
 
 	private WebClient webclient = null;
 	private AmqpBridge bridge = null;
+	private AmqpBridge remote = null;
 	private MongoClient mongodb = null;
 
 	@Override
@@ -52,6 +53,13 @@ public class MainVerticle extends AbstractVerticle {
 			connectStompServer();
 		});
 		connectStompServer();
+
+		remote = AmqpBridge.create(vertx);
+
+		remote.endHandler(handler -> {
+			connectRemoteServer();
+		});
+		connectRemoteServer();
 
 		Router router = Router.router(vertx);
 		
@@ -100,7 +108,55 @@ public class MainVerticle extends AbstractVerticle {
 					for (JsonObject jobflow : jobflows) {
 						String firstTrigger = jobflow.getString("trigger");
 
-						subscribeTrigger(firstTrigger, jobflow);
+						subscribeTrigger(bridge, firstTrigger, jobflow);
+						System.out.println("Predefined job flow " + jobflow.getString("name") + "[" + firstTrigger + "] started.");
+					}
+					
+				} else {
+					System.out.println("No defined job flows.");
+				}
+
+				future.complete("completed");
+			});
+		}, complete -> {
+			System.out.println("The result is: " + complete.result());
+
+			if (ctx != null) {
+				ctx.response().putHeader("Content-Type", "application/json; charset=utf-8").end("{}");
+			}
+		});
+	}
+	
+	private void refreshRemote(RoutingContext ctx) {
+		
+		if (ctx != null) {
+			remote.close(close -> {
+				System.out.println("Close amqp connection for refresh jobflows.");
+				
+				if (close.failed()) {
+					close.cause().printStackTrace();
+				}
+				
+				connectRemoteServer();
+
+			});
+			ctx.response().putHeader("Content-Type", "application/json; charset=utf-8").end("{}");
+			
+			return;
+		}
+		
+		vertx.executeBlocking(future -> {
+			System.out.println("Start loading jobflow definitions.");
+			mongodb.find("aah_jobflows", new JsonObject(), find -> {
+				if (find.succeeded()) {
+					List<JsonObject> jobflows = find.result();
+
+					System.out.println("Predefined jobflows count " + (jobflows == null ? 0 : jobflows.size()) + ".");
+
+					for (JsonObject jobflow : jobflows) {
+						String firstTrigger = jobflow.getString("trigger");
+
+						subscribeTrigger(remote, firstTrigger, jobflow);
 						System.out.println("Predefined job flow " + jobflow.getString("name") + "[" + firstTrigger + "] started.");
 					}
 					
@@ -131,7 +187,19 @@ public class MainVerticle extends AbstractVerticle {
 				});
 	}
 	
-	private void subscribeTrigger(String trigger, JsonObject jobflow) {
+	private void connectRemoteServer() {
+		remote.start(config().getString("remote.server.host", "sa-amq"),
+				config().getInteger("remote.server.port", 5672), res -> {
+					if (res.failed()) {
+						res.cause().printStackTrace();
+						connectRemoteServer();
+					} else {
+						refreshRemote(null);
+					}
+				});
+	}
+	
+	private void subscribeTrigger(AmqpBridge bridge, String trigger, JsonObject jobflow) {
 		MessageConsumer<JsonObject> consumer = bridge.createConsumer(trigger);
 		System.out.println("jobflow [" + jobflow.getString("name") + "][" + trigger + "] subscribed.");
 		consumer.handler(vertxMsg -> this.process(trigger, jobflow, vertxMsg));
