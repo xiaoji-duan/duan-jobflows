@@ -15,6 +15,7 @@ import com.jayway.jsonpath.Option;
 import com.xiaoji.duan.aah.operation.When;
 
 import io.vertx.amqpbridge.AmqpBridge;
+import io.vertx.amqpbridge.AmqpBridgeOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -54,7 +55,11 @@ public class MainVerticle extends AbstractVerticle {
 		});
 		connectStompServer();
 
-		remote = AmqpBridge.create(vertx);
+		AmqpBridgeOptions remoteOption = new AmqpBridgeOptions();
+		remoteOption.setReconnectAttempts(60);			// 重新连接尝试60次
+		remoteOption.setReconnectInterval(60 * 1000);	// 每次尝试间隔1分钟
+		
+		remote = AmqpBridge.create(vertx, remoteOption);
 
 		remote.endHandler(handler -> {
 			connectRemoteServer();
