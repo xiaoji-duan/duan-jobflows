@@ -449,7 +449,14 @@ public class MainVerticle extends AbstractVerticle {
 				
 				String[] variableparams = nexttask.getString("variable").split(";");
 				String variable = variableparams[0];
-				net.minidev.json.JSONArray variableValues = JsonPath.using(document).parse(persistent.encode()).read(variableparams[1]);
+				net.minidev.json.JSONArray variableValues = new net.minidev.json.JSONArray();
+				
+				try {
+					variableValues = JsonPath.using(document).parse(persistent.encode()).read(variableparams[1]);
+				} catch (Exception e) {
+					System.out.println(taskname + " skipped for loop values error " + e.getMessage() + ".");
+					continue;
+				}
 				
 				int start = (nexttask.getString("start") == null || !nexttask.getString("start").matches("[0-9]+")) ? 0 : Integer.valueOf(nexttask.getString("start"));
 				int end = (nexttask.getString("end") == null || !nexttask.getString("end").matches("[0-9]+")) ? variableValues.size() : Integer.valueOf(nexttask.getString("end"));
