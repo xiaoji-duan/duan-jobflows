@@ -77,7 +77,9 @@ public class MainVerticle extends AbstractVerticle {
 		vertx.createHttpServer(option).requestHandler(router::accept).listen(8080, http -> {
 			if (http.succeeded()) {
 				startFuture.complete();
-				System.out.println("HTTP server started on http://localhost:8080");
+				if (config().getBoolean("log.info", Boolean.FALSE)) {
+					System.out.println("HTTP server started on http://localhost:8080");
+				}
 			} else {
 				startFuture.fail(http.cause());
 			}
@@ -88,8 +90,9 @@ public class MainVerticle extends AbstractVerticle {
 		
 		if (ctx != null) {
 			bridge.close(close -> {
-				System.out.println("Close amqp connection for refresh jobflows.");
-				
+				if (config().getBoolean("log.info", Boolean.FALSE)) {
+					System.out.println("Close amqp connection for refresh jobflows.");
+				}				
 				if (close.failed()) {
 					close.cause().printStackTrace();
 				}
@@ -103,28 +106,38 @@ public class MainVerticle extends AbstractVerticle {
 		}
 		
 		vertx.executeBlocking(future -> {
-			System.out.println("Start loading jobflow definitions.");
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println("Start loading jobflow definitions.");
+			}
 			mongodb.find("aah_jobflows", new JsonObject(), find -> {
 				if (find.succeeded()) {
 					List<JsonObject> jobflows = find.result();
 
-					System.out.println("Predefined jobflows count " + (jobflows == null ? 0 : jobflows.size()) + ".");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println("Predefined jobflows count " + (jobflows == null ? 0 : jobflows.size()) + ".");
+					}
 
 					for (JsonObject jobflow : jobflows) {
 						String firstTrigger = jobflow.getString("trigger");
 
 						subscribeTrigger(bridge, firstTrigger, jobflow);
-						System.out.println("Predefined job flow " + jobflow.getString("name") + "[" + firstTrigger + "] started.");
+						if (config().getBoolean("log.info", Boolean.FALSE)) {
+							System.out.println("Predefined job flow " + jobflow.getString("name") + "[" + firstTrigger + "] started.");
+						}
 					}
 					
 				} else {
-					System.out.println("No defined job flows.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println("No defined job flows.");
+					}
 				}
 
 				future.complete("completed");
 			});
 		}, complete -> {
-			System.out.println("The result is: " + complete.result());
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println("The result is: " + complete.result());
+			}
 
 			if (ctx != null) {
 				ctx.response().putHeader("Content-Type", "application/json; charset=utf-8").end("{}");
@@ -136,7 +149,9 @@ public class MainVerticle extends AbstractVerticle {
 		
 		if (ctx != null) {
 			remote.close(close -> {
-				System.out.println("Close amqp connection for refresh jobflows.");
+				if (config().getBoolean("log.info", Boolean.FALSE)) {
+					System.out.println("Close amqp connection for refresh jobflows.");
+				}
 				
 				if (close.failed()) {
 					close.cause().printStackTrace();
@@ -151,29 +166,38 @@ public class MainVerticle extends AbstractVerticle {
 		}
 		
 		vertx.executeBlocking(future -> {
-			System.out.println("Start loading jobflow definitions.");
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println("Start loading jobflow definitions.");
+			}
 			mongodb.find("aah_jobflows", new JsonObject(), find -> {
 				if (find.succeeded()) {
 					List<JsonObject> jobflows = find.result();
 
-					System.out.println("Predefined jobflows count " + (jobflows == null ? 0 : jobflows.size()) + ".");
-
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println("Predefined jobflows count " + (jobflows == null ? 0 : jobflows.size()) + ".");
+					}
 					for (JsonObject jobflow : jobflows) {
 						String firstTrigger = jobflow.getString("trigger");
 
-						subscribeTrigger(remote, firstTrigger, jobflow);
-						System.out.println("Predefined job flow " + jobflow.getString("name") + "[" + firstTrigger + "] started.");
+						subscribeRemoteTrigger(remote, firstTrigger, jobflow);
+						if (config().getBoolean("log.info", Boolean.FALSE)) {
+							System.out.println("Predefined job flow " + jobflow.getString("name") + "[" + firstTrigger + "] started.");
+						}
 					}
 					
 				} else {
-					System.out.println("No defined job flows.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println("No defined job flows.");
+					}
 				}
 
 				future.complete("completed");
 			});
 		}, complete -> {
-			System.out.println("The result is: " + complete.result());
-
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println("The result is: " + complete.result());
+			}
+			
 			if (ctx != null) {
 				ctx.response().putHeader("Content-Type", "application/json; charset=utf-8").end("{}");
 			}
@@ -206,7 +230,20 @@ public class MainVerticle extends AbstractVerticle {
 	
 	private void subscribeTrigger(AmqpBridge bridge, String trigger, JsonObject jobflow) {
 		MessageConsumer<JsonObject> consumer = bridge.createConsumer(trigger);
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + trigger + "] subscribed.");
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + trigger + "] subscribed.");
+		}
+		consumer.handler(vertxMsg -> this.process(trigger, jobflow, vertxMsg));
+	}
+	
+	private void subscribeRemoteTrigger(AmqpBridge bridge, String trigger, JsonObject jobflow) {
+		MessageConsumer<JsonObject> consumer = bridge.createConsumer(trigger);
+		consumer.exceptionHandler(error -> {
+			connectRemoteServer();
+		});
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + trigger + "] subscribed.");
+		}
 		consumer.handler(vertxMsg -> this.process(trigger, jobflow, vertxMsg));
 	}
 	
@@ -216,13 +253,19 @@ public class MainVerticle extends AbstractVerticle {
 	}
 	
 	private void process(String trigger, JsonObject jobflow, Message<JsonObject> received) {
-		System.out.println("jobflow [" + jobflow.getString("name") + "] triggered by " + trigger + "@" + currentDateTime());
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "] triggered by " + trigger + "@" + currentDateTime());
+		}
 		String instanceId = UUID.randomUUID().toString();
-		System.out.println("jobflow [" + jobflow.getString("name") + "] instance id " + instanceId);
-		System.out.println(jobflow.encodePrettily());
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] parameters [" + getShortContent(received.body().encode()) + "]");
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "] instance id " + instanceId);
+			System.out.println(jobflow.encodePrettily());
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] parameters [" + getShortContent(received.body().encode()) + "]");
+		}
 		if (!(received.body().getValue("body") instanceof JsonObject)) {
-			System.out.println("Message content is not JsonObject, process stopped.");
+			if (config().getBoolean("log.error", Boolean.TRUE)) {
+				System.out.println("Message content is not JsonObject, process stopped.");
+			}
 			return;
 		}
 		
@@ -278,15 +321,21 @@ public class MainVerticle extends AbstractVerticle {
 				}
 				
 				if (!whengo) {
-					System.out.println(taskname + " skipped for when condition.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println(taskname + " skipped for when condition.");
+					}
 					continue;
 				} else {
-					System.out.println(taskname + " continued for when condition.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println(taskname + " continued for when condition.");
+					}
 				}
 			}
 
 			if ("loop".equals(type)) {
-				System.out.println("follows can not process loop task, skipped.");
+				if (config().getBoolean("log.info", Boolean.FALSE)) {
+					System.out.println("follows can not process loop task, skipped.");
+				}
 				continue;
 			}
 			
@@ -307,7 +356,9 @@ public class MainVerticle extends AbstractVerticle {
 	
 						// 订阅混合处理返回
 						MessageConsumer<JsonObject> consumer = bridge.createConsumer(taskresulttrigger);
-						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint subscribed.");
+						if (config().getBoolean("log.info", Boolean.FALSE)) {
+							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint subscribed.");
+						}
 						consumer.exceptionHandler(exception -> endpointFuture.fail(exception));
 						consumer.handler(vertxMsg -> {
 							JsonObject endin = vertxMsg.body().getJsonObject("body", new JsonObject()).getJsonObject("context", new JsonObject());
@@ -316,7 +367,9 @@ public class MainVerticle extends AbstractVerticle {
 							vertx.setTimer(3000, timer -> {
 								consumer.unregister(ar -> {
 									if (ar.succeeded()) {
-										System.out.println("Consumer " + consumer.address() + " unregister succeeded.");
+										if (config().getBoolean("log.info", Boolean.FALSE)) {
+											System.out.println("Consumer " + consumer.address() + " unregister succeeded.");
+										}
 									} else {
 										ar.cause().printStackTrace();
 									}
@@ -330,8 +383,9 @@ public class MainVerticle extends AbstractVerticle {
 					.map(v -> compositeFutures.stream().map(Future::result).collect(Collectors.toList()))
 					.setHandler(handler -> {
 						if (handler.succeeded()) {
-							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint completed.");
-//							System.out.println(task.encode());
+							if (config().getBoolean("log.info", Boolean.FALSE)) {
+								System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint completed.");
+							}
 							JsonObject current = new JsonObject();
 							JsonObject parent = new JsonObject();
 
@@ -346,7 +400,9 @@ public class MainVerticle extends AbstractVerticle {
 
 							trigger(null, instanceId, root, current, jobflow, followtask, instanceId, task);
 						} else {
-							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint failed.");
+							if (config().getBoolean("log.info", Boolean.FALSE)) {
+								System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint failed.");
+							}
 							handler.cause().printStackTrace();
 						}
 					});
@@ -409,10 +465,14 @@ public class MainVerticle extends AbstractVerticle {
 				}
 				
 				if (!whengo) {
-					System.out.println(taskname + " skipped for when condition.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println(taskname + " skipped for when condition.");
+					}
 					continue;
 				} else {
-					System.out.println(taskname + " continued for when condition.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println(taskname + " continued for when condition.");
+					}
 				}
 			}
 
@@ -431,13 +491,17 @@ public class MainVerticle extends AbstractVerticle {
 						MessageProducer<JsonObject> producer = bridge.createProducer(endpointtrigger);
 
 						JsonObject body = new JsonObject().put("context", new JsonObject().put(endpoint, current.getJsonObject("parent", current).getJsonObject("outputs", current)));
-						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + getShortContent(body.encode()));
+						if (config().getBoolean("log.info", Boolean.FALSE)) {
+							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + getShortContent(body.encode()));
+						}
 
 						producer.send(new JsonObject().put("body", body));
 						producer.end();
 					}
 				} else {
-					System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint no defined forward withs.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "] composite endpoint no defined forward withs.");
+					}
 				}
 				
 			} else if ("loop".equals(tasktype)) {
@@ -454,7 +518,9 @@ public class MainVerticle extends AbstractVerticle {
 				try {
 					variableValues = JsonPath.using(document).parse(persistent.encode()).read(variableparams[1]);
 				} catch (Exception e) {
-					System.out.println(taskname + " skipped for loop values error " + e.getMessage() + ".");
+					if (config().getBoolean("log.error", Boolean.TRUE)) {
+						System.out.println(taskname + " skipped for loop values error " + e.getMessage() + ".");
+					}
 					continue;
 				}
 				
@@ -494,7 +560,9 @@ public class MainVerticle extends AbstractVerticle {
 					CompositeFuture.all(Arrays.asList(loopfutures.toArray(new Future[loopfutures.size()])))
 					.map(v -> loopfutures.stream().map(Future::result).collect(Collectors.toList()))
 					.setHandler(handler -> {
-						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] merged finished.");
+						if (config().getBoolean("log.info", Boolean.FALSE)) {
+							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] merged finished.");
+						}
 						if (handler.succeeded()) {
 							List<JsonObject> results = handler.result();
 							
@@ -503,7 +571,9 @@ public class MainVerticle extends AbstractVerticle {
 							trigger(null, instanceId, root, current, jobflow, task, triggerId, allcomplete);
 
 						} else {
-							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] complete all stopped with error.");
+							if (config().getBoolean("log.error", Boolean.TRUE)) {
+								System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] complete all stopped with error.");
+							}
 							handler.cause().printStackTrace();
 						}
 					});
@@ -562,10 +632,14 @@ public class MainVerticle extends AbstractVerticle {
 				}
 				
 				if (!whengo) {
-					System.out.println(taskname + " skipped for when condition.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println(taskname + " skipped for when condition.");
+					}
 					continue;
 				} else {
-					System.out.println(taskname + " continued for when condition.");
+					if (config().getBoolean("log.info", Boolean.FALSE)) {
+						System.out.println(taskname + " continued for when condition.");
+					}
 				}
 			}
 
@@ -623,7 +697,9 @@ public class MainVerticle extends AbstractVerticle {
 							trigger(null, instanceId, root, current, jobflow, task, triggerId, allcomplete);
 						}
 					} else {
-						System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] complete all stopped with error.");
+						if (config().getBoolean("log.error", Boolean.TRUE)) {
+							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] complete all stopped with error.");
+						}
 						handler.cause().printStackTrace();
 
 						// 所有子任务完成后处理
@@ -637,7 +713,9 @@ public class MainVerticle extends AbstractVerticle {
 		CompositeFuture.all(Arrays.asList(nextscompletefutures.toArray(new Future[nextscompletefutures.size()])))
 		.map(v -> nextscompletefutures.stream().map(Future::result).collect(Collectors.toList()))
 		.setHandler(handler -> {
-			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] sub tasks result merged finished.");
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] sub tasks result merged finished.");
+			}
 			if (handler.succeeded()) {
 				List<JsonObject> results = handler.result();
 				
@@ -646,7 +724,9 @@ public class MainVerticle extends AbstractVerticle {
 				// 所有子任务完成后处理
 				trigger(null, instanceId, root, current, jobflow, task, triggerId, allcompletenexts);
 			} else {
-				System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] sub tasks stopped with error.");
+				if (config().getBoolean("log.error", Boolean.TRUE)) {
+					System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] sub tasks stopped with error.");
+				}
 				handler.cause().printStackTrace();
 			}
 		});
@@ -664,7 +744,9 @@ public class MainVerticle extends AbstractVerticle {
 		try {
 			Long currenttime = System.currentTimeMillis();
 			String trigger = task.getString("trigger");
-			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + getShortContent(received.body().encode()) + "]");
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] outputs [" + getShortContent(received.body().encode()) + "]");
+			}
 			JsonObject data = received.body().getJsonObject("body");
 	
 			JsonObject current = new JsonObject();
@@ -706,7 +788,9 @@ public class MainVerticle extends AbstractVerticle {
 					nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
 				}
 			} else {
-				System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end@" + currentDateTime() + " with no next triggers.");
+				if (config().getBoolean("log.info", Boolean.FALSE)) {
+					System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] end@" + currentDateTime() + " with no next triggers.");
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -715,7 +799,9 @@ public class MainVerticle extends AbstractVerticle {
 				vertx.setTimer(3000, timer -> {
 					_self.unregister(ar -> {
 						if (ar.succeeded()) {
-							System.out.println("Consumer " + _self.address() + " unregister succeeded.");
+							if (config().getBoolean("log.info", Boolean.FALSE)) {
+								System.out.println("Consumer " + _self.address() + " unregister succeeded.");
+							}
 						} else {
 							ar.cause().printStackTrace();
 						}
@@ -744,7 +830,9 @@ public class MainVerticle extends AbstractVerticle {
 		String trigger = task.getString("trigger");
 		
 		String triggerId = UUID.randomUUID().toString();
-		System.out.println("jobflow [" + jobflow.getString("name") + "] trigger[" + trigger + "] id " + triggerId);
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "] trigger[" + trigger + "] id " + triggerId);
+		}
 
 		String taskresulttrigger = instanceId + "_" + trigger + "_" + triggerId;
 
@@ -758,12 +846,18 @@ public class MainVerticle extends AbstractVerticle {
 		JsonObject persistent = new JsonObject();
 		persistent.put("root", root);
 		persistent.put("parent", current.getJsonObject("parent") == null ? current : current.getJsonObject("parent"));
-//		System.out.println("============================ Debug ============================");
-//		System.out.println(persistent.encode());
-//		System.out.println("============================ Debug ============================");
-		if ("mpp".equals(trigger))
-		System.out.println(getShortContent(persistent.encode()));
-
+		if (config().getBoolean("log.debug", Boolean.FALSE)) {
+			System.out.println("============================ Debug ============================");
+			System.out.println(persistent.encode());
+			System.out.println("============================ Debug ============================");
+		}
+		
+		if ("mpp".equals(trigger)) {
+			if (config().getBoolean("log.info", Boolean.FALSE)) {
+				System.out.println(getShortContent(persistent.encode()));
+			}
+		}
+		
 		Configuration document = Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build();
 
 		for (int i = 0; i < parameters.size(); i++) {
@@ -817,14 +911,18 @@ public class MainVerticle extends AbstractVerticle {
 		current.put("parameters", pParameters);
 		// 订阅下一步处理返回
 		MessageConsumer<JsonObject> consumer = bridge.createConsumer(taskresulttrigger);
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] subscribed.");
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] subscribed.");
+		}
 		consumer.handler(vertxMsg -> this.next(future, instanceId, triggerId, root, current, jobflow, parenttask, parentTriggerId, task, vertxMsg, consumer));
 
 		// 发送下一步处理消息
 		MessageProducer<JsonObject> producer = bridge.createProducer(trigger);
 
 		JsonObject body = new JsonObject().put("context", nextctx);
-		System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] send " + (body.encode().length() > 512 ? body.encode().substring(0, 512) : body.encode()));
+		if (config().getBoolean("log.info", Boolean.FALSE)) {
+			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] send " + (body.encode().length() > 512 ? body.encode().substring(0, 512) : body.encode()));
+		}
 
 		producer.send(new JsonObject().put("body", body));
 		producer.end();
