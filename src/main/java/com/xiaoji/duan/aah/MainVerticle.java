@@ -519,6 +519,8 @@ public class MainVerticle extends AbstractVerticle {
 					variableValues = JsonPath.using(document).parse(persistent.encode()).read(variableparams[1]);
 				} catch (Exception e) {
 					if (config().getBoolean("log.error", Boolean.TRUE)) {
+						System.out.println("=================================================================");
+						System.out.println(persistent.encodePrettily());
 						System.out.println(taskname + " skipped for loop values error " + e.getMessage() + ".");
 					}
 					continue;
