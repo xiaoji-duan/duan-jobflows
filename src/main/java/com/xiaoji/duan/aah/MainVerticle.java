@@ -40,6 +40,13 @@ public class MainVerticle extends AbstractVerticle {
 
 	@Override
 	public void start(Future<Void> startFuture) throws Exception {
+		vertx.exceptionHandler(exception -> {
+			if (config().getBoolean("log.error", Boolean.TRUE)) {
+				System.out.println("Vertx exception caught.");
+			}
+			exception.printStackTrace();
+		});
+		
 		webclient = WebClient.create(vertx);
 
 		JsonObject config = new JsonObject();
@@ -509,7 +516,7 @@ public class MainVerticle extends AbstractVerticle {
 				persistent.put("root", root);
 				persistent.put("parent", parent);
 
-				Configuration document = Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build();
+				Configuration document = Configuration.builder().options(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL).build();
 				
 				String[] variableparams = nexttask.getString("variable").split(";");
 				String variable = variableparams[0];
@@ -655,7 +662,7 @@ public class MainVerticle extends AbstractVerticle {
 				persistent.put("root", root);
 				persistent.put("parent", parent);
 
-				Configuration document = Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build();
+				Configuration document = Configuration.builder().options(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL).build();
 				
 				String[] variableparams = nexttask.getString("variable").split(";");
 				String variable = variableparams[0];
@@ -859,8 +866,8 @@ public class MainVerticle extends AbstractVerticle {
 				System.out.println(getShortContent(persistent.encode()));
 			}
 		}
-		
-		Configuration document = Configuration.builder().options(Option.DEFAULT_PATH_LEAF_TO_NULL).build();
+
+		Configuration document = Configuration.builder().options(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL).build();
 
 		for (int i = 0; i < parameters.size(); i++) {
 			String parameter = parameters.getString(i);
