@@ -446,7 +446,7 @@ public class MainVerticle extends AbstractVerticle {
 
 		// 没有子任务完成后处理
 		for (int i = 0; i < nexts.size(); i++) {
-			JsonObject nexttask = nexts.getJsonObject(i);
+			JsonObject nexttask = nexts.getJsonObject(i).copy();
 			
 			String taskname = nexttask.getString("name", "");
 			String tasktype = nexttask.getString("type", "single");
@@ -761,7 +761,7 @@ public class MainVerticle extends AbstractVerticle {
 			JsonObject current = new JsonObject();
 			
 			if (data != null) {
-				parent = parent.put("outputs", data.getJsonObject("context"));
+				parent = parent.put("outputs", data.getJsonObject("context")).copy();
 				//////////////////////////////////////////////////////////
 				// 2019/10/14 席理加增加
 				// 支持子任务多次返回
@@ -792,9 +792,9 @@ public class MainVerticle extends AbstractVerticle {
 	
 			if (nexts != null && !nexts.isEmpty()) {
 				if (!allcompletenexts.isEmpty()) {
-					allcompletenexts(allcompletenexts, instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
+					allcompletenexts(allcompletenexts, instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task.copy());
 				} else {
-					nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task);
+					nexts(instanceId, triggerId, root, parent, current, jobflow, parenttask, parentTriggerId, task.copy());
 				}
 			} else {
 				if (config().getBoolean("log.info", Boolean.FALSE)) {
