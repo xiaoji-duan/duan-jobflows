@@ -44,7 +44,7 @@ public class MainVerticle extends AbstractVerticle {
 			if (config().getBoolean("log.error", Boolean.TRUE)) {
 				System.out.println("Vertx exception caught.");
 			}
-			exception.printStackTrace();
+			connectRemoteServer();
 		});
 		
 		webclient = WebClient.create(vertx);
@@ -68,9 +68,9 @@ public class MainVerticle extends AbstractVerticle {
 		
 		remote = AmqpBridge.create(vertx, remoteOption);
 
-		remote.endHandler(handler -> {
-			connectRemoteServer();
-		});
+//		remote.endHandler(handler -> {
+//			connectRemoteServer();
+//		});
 		connectRemoteServer();
 
 		Router router = Router.router(vertx);
@@ -227,7 +227,7 @@ public class MainVerticle extends AbstractVerticle {
 		remote.start(config().getString("remote.server.host", "sa-amq"),
 				config().getInteger("remote.server.port", 5672), res -> {
 					if (res.failed()) {
-						res.cause().printStackTrace();
+//						res.cause().printStackTrace();
 						connectRemoteServer();
 					} else {
 						refreshRemote(null);
@@ -502,6 +502,9 @@ public class MainVerticle extends AbstractVerticle {
 							System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + getShortContent(body.encode()));
 						}
 
+						if (config().getBoolean("log.debug", Boolean.FALSE)) {
+							System.out.println("DEBUG jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + endpoint + "] composite endpoint send " + body.encode().length() + " length message.");
+						}
 						producer.send(new JsonObject().put("body", body));
 						producer.end();
 					}
@@ -933,6 +936,9 @@ public class MainVerticle extends AbstractVerticle {
 			System.out.println("jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] send " + (body.encode().length() > 512 ? body.encode().substring(0, 512) : body.encode()));
 		}
 
+		if (config().getBoolean("log.debug", Boolean.FALSE)) {
+			System.out.println("DEBUG jobflow [" + jobflow.getString("name") + "][" + instanceId + "][" + trigger + "][" + triggerId + "] send " + body.encode().length() + " length message.");
+		}
 		producer.send(new JsonObject().put("body", body));
 		producer.end();
 	}
