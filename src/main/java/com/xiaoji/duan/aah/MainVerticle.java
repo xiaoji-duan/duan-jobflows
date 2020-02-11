@@ -44,7 +44,7 @@ public class MainVerticle extends AbstractVerticle {
 			if (config().getBoolean("log.error", Boolean.TRUE)) {
 				System.out.println("Vertx exception caught.");
 			}
-			connectRemoteServer();
+			System.exit(-1);
 		});
 		
 		webclient = WebClient.create(vertx);
